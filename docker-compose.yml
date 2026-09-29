@@ -1,5 +1,7 @@
 # docker compose up detect   — детектор + проигрывание bag, результат в ${OUT_DIR}
 # docker compose up demo     — то же + RViz (Linux, X11; см. docs/RUN.md про macOS)
+# docker compose up web      — веб-прототип: http://localhost:8080 (загрузка / выбор bag,
+#                              обработка, 3D-вид, сводка; без ROS)
 #
 # Переменные (можно положить в .env рядом):
 #   BAGS_DIR  каталог с bag-ами (монтируется только на чтение), по умолчанию ./data
@@ -8,6 +10,8 @@
 #   MODE      default | geometry | strict | soft
 #   RATE      скорость проигрывания в demo, по умолчанию 1.0
 #   DEMO_BASE_IMAGE  база демо-образа (по умолчанию osrf/ros:humble-desktop, только amd64)
+#   WEB_PORT  порт веб-прототипа на хосте, по умолчанию 8080
+#   WEB_DATA_DIR  загрузки и результаты веб-прототипа, по умолчанию ./out/web
 x-common: &common
   network_mode: host
   volumes:
@@ -49,3 +53,14 @@ services:
       ros2 launch metro_obstacle detect.launch.py
       bag:=/data/bags/${BAG:-doubleT_obstacle} mode:=${MODE:-default}
       rviz:=true loop:=true rate:=${RATE:-1.0}
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: metro-obstacle-web
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    volumes:
+      - ${BAGS_DIR:-./data}:/data/bags:ro
+      - ${WEB_DATA_DIR:-./out/web}:/data/web

@@ -354,7 +354,9 @@ def convert(
     start: int = 0,
     max_frames: int | None = None,
     log: Callable[[str], None] = print,
+    progress: Callable[[int], None] | None = None,
 ) -> Stats:
+    """progress(k) — после каждого записанного кадра (k — сколько кадров готово)."""
     files = db3_files(bag)
     topic = find_cloud_topic(files, topic)
     warm = float(warmup())
@@ -396,6 +398,8 @@ def convert(
             frames += 1
             obstacles += int(res.obstacle)
             core_ms += float(res.processing_ms)
+            if progress is not None:
+                progress(frames)
             if frames % 10 == 0:
                 dt = time.perf_counter() - t0
                 log(

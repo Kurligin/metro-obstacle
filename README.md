@@ -114,11 +114,33 @@ BAGS_DIR=/path/to/bags BAG=doubleT_obstacle docker compose up demo
 статус; раскладка — `docs/lichtblick_layout.json`
 ([docs/RUN.md](docs/RUN.md#без-ros-запись--mcap-для-lichtblick--foxglove)).
 
+### 5. Веб-прототип: загрузить запись и посмотреть результат в браузере
+
+```bash
+BAGS_DIR=/path/to/bags docker compose build web   # образ без ROS, ~0.85 ГБ
+BAGS_DIR=/path/to/bags docker compose up web      # записи из /path/to/bags — в списке
+# открыть http://localhost:8080 → выбрать запись или загрузить .db3 / .zip → «Обработать»
+```
+
+![Веб-прототип: doubleT_obstacle, кадр первого обнаружения](docs/img/web_ui.png)
+
+Запись прогоняется через то же ядро (режим `default`) покадрово, без ROS и без ожидания
+реального времени (`doubleT_obstacle`, 201 кадр, — около 5 с). Слева — 3D-вид кадра:
+облако (цвет по интенсивности), коридор габарита, рамки объектов с дистанцией; мышь —
+вращение и зум, под видом — слайдер кадров и проигрывание. Справа — статус кадра
+(«ПУТЬ СВОБОДЕН» / «ПРЕПЯТСТВИЕ 55.5 м»), объекты кадра, сводка по записи (кадры с
+тревогой, первое обнаружение, время кадра), график дистанции по кадрам и таблица событий
+тревоги; клик по графику или событию — переход к кадру. Скачать: `results.jsonl` (формат
+как у ноды) и `.mcap` для Lichtblick. Тот же функционал — HTTP API, описание в
+[docs/RUN.md](docs/RUN.md#веб-прототип). Страница работает без интернета: three.js r160
+(лицензия MIT, `web/static/vendor/LICENSE-three.txt`) лежит в репозитории.
+
 ### Видео
 
-Демонстрация — `docker compose up demo` на `doubleT_obstacle`: в RViz облако лидара,
-коридор габарита, подтверждённое препятствие (человек) и дистанция до него; затем
-фрагмент пустого тоннеля без тревог. Ссылка — в форме сдачи.
+**[metro-obstacle-demo.mp4](https://github.com/Kurligin/metro-obstacle/releases/download/v1.0/metro-obstacle-demo.mp4)**
+(50 с, записано через веб-прототип, три ракурса камеры): реальный человек на пути на
+~56 м — тревога, дистанция, уход человека и «путь свободен»; пустой тоннель без тревог;
+синтетика заказчика — куб 2×2 м и объект 0.3 × 0.3 м на пути.
 
 ## Что публикуется
 
@@ -284,7 +306,9 @@ for l in open(sys.argv[1]):
 
 ```
 .
-├── Dockerfile, docker-compose.yml   образ решения; compose: detect, demo (RViz)
+├── Dockerfile, docker-compose.yml   образ решения; compose: detect, demo (RViz), web
+├── Dockerfile.web                   образ веб-прототипа (ядро + rosbags, без ROS)
+├── web/                             веб-прототип: HTTP API (stdlib) и страница (three.js локально)
 ├── docker/                          entrypoint, точные версии numpy/numba для образа
 ├── metro_obstacle_core/             ядро детектора без ROS (Python, numpy, numba, lightgbm)
 │   └── src/metro_obstacle_core/     detector, calib, axis, floor, speed, verifier, kernels, params
@@ -319,8 +343,8 @@ for l in open(sys.argv[1]):
 # ROS-пакет в образе (разбор облака, сообщения, сквозной кадр через ядро)
 docker run --rm metro-obstacle bash -c \
   'cd /ws/src/metro_obstacle && python3 -m pytest -q -p no:cacheprovider test'
-# ядро без Docker (Python >= 3.10)
-pip install ./metro_obstacle_core pytest && python3 -m pytest -q tests
+# ядро без Docker (Python >= 3.10); rosbags и mcap-ros2-support — для тестов MCAP и веба
+pip install ./metro_obstacle_core pytest rosbags mcap-ros2-support && python3 -m pytest -q tests
 ```
 
 Регрессионные тесты на реальных кадрах пропускаются, если нет кэша стенда.

@@ -1,0 +1,49 @@
+# Образ веб-прототипа: ядро детектора + чтение записей ROS 2 без ROS + HTTP-сервер.
+#   docker compose up web      → http://localhost:8080
+# ROS здесь не нужен: запись (.db3) читается rosbags, облако разбирается тем же
+# cloud.py, что в ноде, кадры идут через то же ядро (режим default).
+FROM python:3.10-slim
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    NUMBA_NUM_THREADS=1
+
+# libgomp1 — для lightgbm (проверяющий классификатор режима default).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ядро — с теми же точными версиями зависимостей, что в образе детектора.
+COPY docker/constraints.txt docker/requirements-web.txt /opt/
+COPY metro_obstacle_core /opt/metro_obstacle_core/
+RUN python -m pip install -c /opt/constraints.txt /opt/metro_obstacle_core \
+        -r /opt/requirements-web.txt \
+    && python -c "import numpy, rosbags, mcap_ros2, metro_obstacle_core as c; \
+print('metro_obstacle_core', c.__version__, 'numpy', numpy.__version__); \
+d = c.Detector('default'); print('verifier', d.verifier_note); assert d.verifier is not None"
+
+# Прогрев numba в дисковый кэш — как в основном Dockerfile (см. комментарий там).
+ENV NUMBA_CACHE_DIR=/opt/numba_cache
+RUN pkg="$(python -c 'import metro_obstacle_core, os; print(os.path.dirname(metro_obstacle_core.__file__))')" \
+    && find "$pkg" -name '*.py' -exec touch -d "@$(date +%s)" {} + \
+    && mkdir -p "$NUMBA_CACHE_DIR" \
+    && python -c "import metro_obstacle_core as c; print(f'numba warm-up {c.warmup():.1f} s')" \
+    && chmod -R a+rwX "$NUMBA_CACHE_DIR"
+
+# Чистые модули ROS-пакета (разбор облака, маркеры), конвертер в MCAP и сам веб.
+WORKDIR /app
+COPY ros2_ws/src/metro_obstacle/metro_obstacle ./ros2_ws/src/metro_obstacle/metro_obstacle
+COPY bench/to_mcap.py ./bench/to_mcap.py
+COPY web ./web
+
+# /data/bags — записи (только чтение), /data/web — загрузки и результаты обработки.
+ENV BAGS_DIR=/data/bags \
+    WEB_DATA_DIR=/data/web \
+    WEB_HOST=0.0.0.0 \
+    WEB_PORT=8080
+EXPOSE 8080
+CMD ["python", "-m", "web.server"]

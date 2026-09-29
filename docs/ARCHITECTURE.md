@@ -13,6 +13,7 @@
 | сообщения `metro_obstacle_msgs` | `ros2_ws/src/metro_obstacle_msgs/msg/` | `ObstacleStatus`, `Obstacle`, `ObstacleArray` | rosidl, ament_cmake |
 | образ | `Dockerfile`, `docker/`, `docker-compose.yml` | ROS 2 Humble + ядро + пакеты; прогретый кэш numba; сервисы `detect` и `demo` (RViz) | Docker |
 | стенд | `bench/` | кэш bag, синтетика трассировкой лучей, метрики, прототипы всех сравнённых вариантов, обучение классификатора, прогоны на данных заказчика, выгрузка в MCAP (`to_mcap.py`) | Python, rosbags, lightgbm, matplotlib, mcap |
+| веб-прототип | `web/`, `Dockerfile.web` | HTTP API и страница: выбор или загрузка записи (.db3 / .zip), покадровый прогон через ядро в фоне (чтение rosbags + `cloud.py`, как в `bench/to_mcap.py`), прогресс, сводка и события тревоги, облако кадра по запросу (прорежено до 70 тыс. точек, читается из записи по номеру сообщения), коридор и рамки из `viz.py`, выгрузка `results.jsonl` и `.mcap`; 3D-вид — three.js, лежит в репозитории | Python stdlib `http.server`, rosbags, three.js (MIT) |
 | тесты | `tests/`, `ros2_ws/src/metro_obstacle/test/` | юнит-тесты ядра и ноды, регрессия на реальных кадрах, сверка ядра со стендом | pytest |
 
 Модули ядра:
@@ -292,7 +293,10 @@ i7-9700E не мерили; по паспортной частоте он одн
 - **Сеть.** `--net=host`; если издатель вне контейнера — ещё `--ipc=host` (Fast DDS
   передаёт большие облака через разделяемую память).
 - **Compose.** `detect` — детектор + проигрывание bag; `demo` — то же с RViz (образ на
-  базе `osrf/ros:humble-desktop`, X11).
+  базе `osrf/ros:humble-desktop`, X11); `web` — веб-прототип на порту 8080 (образ
+  `Dockerfile.web` на `python:3.10-slim` без ROS: ядро с теми же `docker/constraints.txt`,
+  rosbags и mcap из `docker/requirements-web.txt`; тома `BAGS_DIR` → `/data/bags:ro`,
+  `WEB_DATA_DIR` → `/data/web` для загрузок и результатов).
 
 Команды — в [README](../README.md#быстрый-старт) и [RUN.md](RUN.md).
 

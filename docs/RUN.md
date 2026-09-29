@@ -294,6 +294,35 @@ NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m bench.to_mcap \
 `docs/lichtblick_layout.json` (Layouts → Import): 3D-вид сзади-сверху по ходу (−Y),
 облако по интенсивности, справа — статус.
 
+## Веб-прототип
+
+```bash
+BAGS_DIR=/path/to/bags docker compose up --build web   # → http://localhost:8080
+```
+
+Страница: выбрать запись из `BAGS_DIR` (тот же каталог, что у `detect`) или загрузить
+`.db3` / `.zip` с каталогом записи → «Обработать» (поле «Кадров» — обработать только
+первые N) → прогресс → 3D-вид кадра, статус, сводка, график дистанции, события тревоги,
+скачивание `results.jsonl` и `.mcap`. Загрузки и результаты — в `WEB_DATA_DIR`
+(по умолчанию `./out/web`), порт — `WEB_PORT`. Задачи живут в памяти сервера: после
+перезапуска контейнера запись нужно обработать заново. Без Docker:
+`BAGS_DIR=/path/to/bags python -m web.server` (нужны ядро, `rosbags`, `mcap-ros2-support`).
+
+HTTP API (для скрипта вместо страницы):
+
+```bash
+curl -s localhost:8080/api/bags                                      # записи
+curl -s -X POST localhost:8080/api/jobs -d '{"bag": "bags:doubleT_obstacle"}'   # → {"id": ...}
+curl -s localhost:8080/api/jobs/<id>                  # состояние, прогресс, сводка, события
+curl -s localhost:8080/api/jobs/<id>/results.jsonl    # результаты по кадрам (как у ноды)
+curl -s -X POST --data-binary @bag.db3 'localhost:8080/api/upload?name=bag.db3'  # загрузка
+```
+
+Ещё: `GET /api/jobs/<id>/series` (ряды по кадрам), `/frames/<k>` (объекты, коридор,
+рамки кадра), `/frames/<k>/cloud` (облако float32 x, y, z, intensity), `POST` и `GET
+/api/jobs/<id>/mcap` (собрать и скачать MCAP). В `results.jsonl` `processing_ms` — чтение
+кадра из записи + разбор + ядро, `core_ms` — ядро.
+
 ## Проверка без ядра
 
 Чтобы проверить ROS-обвязку (топики, маркеры, лог) без настоящего детектора:

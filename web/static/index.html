@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MetroObstacle — обнаружение препятствий в габарите</title>
+    <link rel="icon" href="data:," />
+    <link
+      rel="preload"
+      href="/static/vendor/fonts/inter-cyrillic-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/static/vendor/fonts/jetbrains-mono-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script type="importmap">
+      { "imports": { "three": "/static/vendor/three.module.min.js" } }
+    </script>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ================================================= верхняя панель -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="dot"></span>
+          <span>MetroObstacle</span>
+          <small class="brand-sub">· обнаружение препятствий в габарите по лидару</small>
+        </div>
+        <span class="chip-mode" title="Режим детектора">режим <b id="mode">default</b></span>
+
+        <form id="run-form" class="source" autocomplete="off">
+          <select id="bag-select" class="sel" title="Запись из каталога"></select>
+          <label class="btn file" title="Загрузить запись: .db3 или .zip с каталогом записи">
+            <input id="bag-file" type="file" accept=".db3,.zip" />
+            <span id="bag-file-name">Загрузить .db3 / .zip</span>
+          </label>
+          <input
+            id="max-frames"
+            class="sel frames"
+            type="number"
+            min="1"
+            placeholder="все кадры"
+            title="Обработать только первые N кадров (пусто — все)"
+          />
+          <button id="run-btn" type="submit" class="btn primary">Обработать</button>
+          <span id="progress-text" class="progress-text mono"></span>
+        </form>
+
+        <span class="spacer"></span>
+        <a id="dl-results" class="btn disabled" href="#" download>results.jsonl</a>
+        <button id="dl-mcap" type="button" class="btn" disabled>.mcap для Lichtblick</button>
+        <div id="progress" class="topbar-progress hidden"><i></i></div>
+      </header>
+
+      <div id="error" class="toast hidden" title="Скрыть"></div>
+
+      <!-- ================================================= середина -->
+      <main class="main">
+        <aside class="panel left">
+          <section class="sec">
+            <h3>Запись</h3>
+            <dl id="record" class="kv"></dl>
+          </section>
+
+          <section class="sec">
+            <h3 id="metric-title">Первое обнаружение</h3>
+            <div class="score-big">
+              <span id="metric-n" class="n">—</span>
+              <span id="metric-of" class="of"></span>
+            </div>
+            <div id="metric-sub" class="metric-sub dim">запись не обработана</div>
+            <div id="alarm-blocks" class="blocks"></div>
+          </section>
+
+          <section class="sec">
+            <h3>Время, мс <span class="dim h3-note">бюджет 100</span></h3>
+            <div id="time-blocks" class="blocks"></div>
+            <dl id="speed" class="kv speed"></dl>
+          </section>
+
+          <section class="sec">
+            <h3>Обработанные записи</h3>
+            <div id="jobs" class="run-list"></div>
+          </section>
+        </aside>
+
+        <section id="view" class="view">
+          <div id="labels" class="labels"></div>
+          <div id="view-cap" class="cap"></div>
+          <div id="view-empty" class="view-empty">
+            <div class="empty-box">Выберите запись и нажмите «Обработать»</div>
+          </div>
+          <div id="rec-status" class="rec-status hidden"></div>
+          <div class="mlegend">
+            <span><i class="sw ok"></i>габарит</span>
+            <span><i class="sw bad"></i>препятствие</span>
+            <span><i class="sw warn"></i>кандидат</span>
+            <span><i class="sw gauge"></i>точки в габарите</span>
+            <span class="ramp-lg"
+              ><span id="ramp-label">высота над полотном</span> <i class="ramp"></i
+            ></span>
+            <span id="color-mode" class="seg" title="Раскраска облака">
+              <button type="button" data-color="height">высота</button>
+              <button type="button" data-color="intensity">intensity</button>
+            </span>
+          </div>
+          <div id="campresets" class="campresets" title="Камера (клавиши 1–3)">
+            <button type="button" data-cam="cab">Кабина</button>
+            <button type="button" data-cam="chase">За поездом</button>
+            <button type="button" data-cam="overview">Сбоку-сверху</button>
+          </div>
+          <div class="mapctl">
+            <button id="zoom-in" type="button" title="Приблизить">+</button>
+            <button id="zoom-out" type="button" title="Отдалить">−</button>
+            <span class="sep"></span>
+            <button id="reset-view" type="button" title="Вид сзади, вдоль пути">
+              <svg viewBox="0 0 16 16">
+                <path
+                  d="M8 2 3 14h10z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+                <path d="M8 6v5" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+            </button>
+            <button id="fit-view" type="button" title="Вписать облако целиком">
+              <svg viewBox="0 0 16 16">
+                <path
+                  d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                />
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        <aside class="panel right">
+          <section class="sec">
+            <h3 id="now-title">Сейчас</h3>
+            <div id="now" class="rows"></div>
+          </section>
+
+          <section class="sec">
+            <h3>Объекты кадра <span id="obj-count" class="dim h3-note"></span></h3>
+            <table class="list objects">
+              <thead>
+                <tr>
+                  <th>Дист., м</th>
+                  <th>Смещ.</th>
+                  <th>Ш×В×Д, м</th>
+                  <th>Точ.</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="objects"></tbody>
+            </table>
+          </section>
+
+          <section class="sec">
+            <h3>События тревоги <span class="dim h3-note">можно выбрать</span></h3>
+            <table class="list events">
+              <thead>
+                <tr>
+                  <th>Кадры</th>
+                  <th>Время, с</th>
+                  <th>Дист., м</th>
+                  <th>Ш×В×Д, м</th>
+                </tr>
+              </thead>
+              <tbody id="events"></tbody>
+            </table>
+            <div id="resets" class="note hidden"></div>
+          </section>
+        </aside>
+      </main>
+
+      <!-- ================================================= плеер и таймлайн -->
+      <footer class="bottom">
+        <div class="player">
+          <button id="play" type="button" class="play" title="Пуск / пауза (Пробел)" disabled>
+            <svg id="play-icon" viewBox="0 0 16 16">
+              <path d="M4 2.5v11l9-5.5z" fill="currentColor" />
+            </svg>
+          </button>
+          <span id="time" class="time">0:00.0 / 0:00.0</span>
+          <span id="frame-no" class="frame-no mono dim">кадр — / —</span>
+          <div id="speeds" class="speeds">
+            <button type="button" data-speed="0.5">×0.5</button>
+            <button type="button" data-speed="1" class="on">×1</button>
+            <button type="button" data-speed="2">×2</button>
+            <button type="button" data-speed="4">×4</button>
+          </div>
+          <span class="hint"
+            >Пробел — пуск/пауза · ←/→ — ±1 кадр · Shift — ±10 · клик по шкале — перемотка</span
+          >
+        </div>
+        <div id="tracks" class="tracks"><canvas id="tracks-canvas"></canvas></div>
+      </footer>
+    </div>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>

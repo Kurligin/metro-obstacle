@@ -5,6 +5,10 @@
 !metro_obstacle_core
 !docker/entrypoint.sh
 !docker/constraints.txt
+# веб-прототип (Dockerfile.web)
+!docker/requirements-web.txt
+!bench/to_mcap.py
+!web
 
 **/__pycache__
 **/*.pyc
