@@ -137,7 +137,7 @@ BAGS_DIR=/path/to/bags docker compose up web      # записи из /path/to/b
 
 ### Видео
 
-**[metro-obstacle-demo.mp4](https://github.com/Kurligin/metro-obstacle/releases/download/v1.0/metro-obstacle-demo.mp4)**
+**[metro-obstacle-demo.mp4](https://drive.google.com/file/d/1u5tiwy09KhiPsfsCfY2mH-QTezr2SuZ-/view?usp=sharing)**
 (50 с, записано через веб-прототип, три ракурса камеры): реальный человек на пути на
 ~56 м — тревога, дистанция, уход человека и «путь свободен»; пустой тоннель без тревог;
 синтетика заказчика — куб 2×2 м и объект 0.3 × 0.3 м на пути.
