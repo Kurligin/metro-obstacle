@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.npz
+*.npy
+out/
+
+# сборка пакета ядра (pip install ./metro_obstacle_core)
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# служебные файлы macOS
+.DS_Store

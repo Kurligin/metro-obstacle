@@ -1,0 +1,15 @@
+# В контекст сборки попадает только то, что нужно образу (белый список):
+# без .venv, out/, кэшей стенда, .git и прочего.
+*
+!ros2_ws/src
+!metro_obstacle_core
+!docker/entrypoint.sh
+!docker/constraints.txt
+
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+**/build
+**/.DS_Store

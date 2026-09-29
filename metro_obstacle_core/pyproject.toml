@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metro_obstacle_core"
+version = "0.1.0"
+description = "Obstacle detection in the metro train clearance gauge from a 3D lidar (ROS-free core)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # ROS 2 Humble (Ubuntu 22.04, Python 3.10): Python-расширения сообщений собраны
+    # под numpy 1.x, поэтому там numpy < 2; на новых Python — любая поддерживаемая numba.
+    "numpy>=1.22,<2; python_version < '3.11'",
+    "numpy>=1.22,<2.6; python_version >= '3.11'",
+    "numba>=0.59,<0.68",
+    # проверяющий классификатор режима default (без него — откат на режим geometry)
+    "lightgbm>=4.0,<5",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+metro_obstacle_core = ["models/*.txt"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+ignore = ["N803", "N806", "N812", "RUF001", "RUF002", "RUF003"]

@@ -1,0 +1,51 @@
+# docker compose up detect   — детектор + проигрывание bag, результат в ${OUT_DIR}
+# docker compose up demo     — то же + RViz (Linux, X11; см. docs/RUN.md про macOS)
+#
+# Переменные (можно положить в .env рядом):
+#   BAGS_DIR  каталог с bag-ами (монтируется только на чтение), по умолчанию ./data
+#   BAG       имя bag внутри BAGS_DIR, по умолчанию doubleT_obstacle
+#   OUT_DIR   куда писать results_<bag>_<время>.jsonl, по умолчанию ./out/run
+#   MODE      default | geometry | strict | soft
+#   RATE      скорость проигрывания в demo, по умолчанию 1.0
+#   DEMO_BASE_IMAGE  база демо-образа (по умолчанию osrf/ros:humble-desktop, только amd64)
+x-common: &common
+  network_mode: host
+  volumes:
+    - ${BAGS_DIR:-./data}:/data/bags:ro
+    - ${OUT_DIR:-./out/run}:/data/out
+  environment:
+    METRO_FAKE_CORE: ${METRO_FAKE_CORE:-false}
+
+services:
+  detect:
+    <<: *common
+    build: .
+    image: metro-obstacle
+    command: >-
+      ros2 launch metro_obstacle detect.launch.py
+      bag:=/data/bags/${BAG:-doubleT_obstacle} mode:=${MODE:-default}
+
+  demo:
+    <<: *common
+    build:
+      context: .
+      args:
+        # osrf/ros:humble-desktop есть только под amd64; на arm64 (Mac M-серии,
+        # Jetson) — DEMO_BASE_IMAGE=ros:humble-ros-base, RViz поставится из apt.
+        BASE_IMAGE: ${DEMO_BASE_IMAGE:-osrf/ros:humble-desktop}
+        EXTRA_APT: ros-humble-rviz2
+    image: metro-obstacle-demo
+    environment:
+      METRO_FAKE_CORE: ${METRO_FAKE_CORE:-false}
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      # Без GPU в контейнере: LIBGL_ALWAYS_SOFTWARE=1 (медленнее, но работает везде).
+      LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-0}
+    volumes:
+      - ${BAGS_DIR:-./data}:/data/bags:ro
+      - ${OUT_DIR:-./out/run}:/data/out
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: >-
+      ros2 launch metro_obstacle detect.launch.py
+      bag:=/data/bags/${BAG:-doubleT_obstacle} mode:=${MODE:-default}
+      rviz:=true loop:=true rate:=${RATE:-1.0}

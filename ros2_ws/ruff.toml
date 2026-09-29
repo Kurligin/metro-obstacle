@@ -1,0 +1,11 @@
+# Линтер ROS-пакетов (black запускается с тем же -l 100).
+line-length = 100
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "BLE", "RUF"]
+# Кириллица в комментариях и строках — намеренно.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[lint.isort]
+known-first-party = ["metro_obstacle", "metro_obstacle_msgs"]
